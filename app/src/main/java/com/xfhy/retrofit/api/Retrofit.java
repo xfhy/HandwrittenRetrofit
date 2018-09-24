@@ -50,7 +50,7 @@ public class Retrofit {
         }
         //无缓存  则读数据  采集数据
         serviceMethod = new ServiceMethod.Builder(this, method).build();
-        mServiceMethodCache.put(method, serviceMethod);
+        mServiceMethodCache.putIfAbsent(method, serviceMethod);
         return serviceMethod;
     }
 
