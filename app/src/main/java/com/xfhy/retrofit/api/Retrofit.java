@@ -30,12 +30,11 @@ public class Retrofit {
         //这里应该判断一下clazz的正确性
         Utils.validateServiceInterface(clazz);
         //动态代理
-        return (T) Proxy.newProxyInstance(clazz.getClassLoader(), clazz.getInterfaces(), new InvocationHandler() {
+        return (T) Proxy.newProxyInstance(clazz.getClassLoader(), new Class[]{clazz}, new InvocationHandler() {
             @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                 //1. 采集数据
                 //2. 请求网络
-
                 //拿到数据  然后构建一个OkHttp的Call
                 ServiceMethod serviceMethod = loadServiceMethod(method);
                 return serviceMethod.toCall(args);
@@ -57,6 +56,10 @@ public class Retrofit {
 
     public HttpUrl getBaseUrl() {
         return baseUrl;
+    }
+
+    public Call.Factory getCallFactory() {
+        return callFactory;
     }
 
     public static final class Builder {

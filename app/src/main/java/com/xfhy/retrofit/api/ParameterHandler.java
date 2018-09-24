@@ -11,29 +11,43 @@ public abstract class ParameterHandler {
     public static class Query extends ParameterHandler {
         /**
          * 记录参数的注解的值
+         * http://api.a3.p?age=2
+         * 这里的paramName就是age
          */
-        String value;
+        String paramName;
 
-        public Query(String value) {
-            this.value = value;
+        public Query(String paramName) {
+            this.paramName = paramName;
         }
 
+        /**
+         * 处理GET 的请求  参数的添加
+         *
+         * @param serviceMethod 方法的一些信息
+         * @param value         传入的参数的值
+         */
         @Override
         void apply(ServiceMethod serviceMethod, String value) {
-
+            serviceMethod.addQueryParameter(paramName, value);
         }
     }
 
     public static class Field extends ParameterHandler {
-        String value;
+        String paramName;
 
-        public Field(String value) {
-            this.value = value;
+        public Field(String paramName) {
+            this.paramName = paramName;
         }
 
+        /**
+         * 处理POST 的请求  参数的添加
+         *
+         * @param serviceMethod 方法的一些信息
+         * @param value         传入的参数的值
+         */
         @Override
         void apply(ServiceMethod serviceMethod, String value) {
-
+            serviceMethod.addFormFiled(paramName, value);
         }
     }
 

@@ -9,6 +9,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 
 import okhttp3.Call;
+import okhttp3.FormBody;
 import okhttp3.HttpUrl;
 import okhttp3.Request;
 
@@ -30,16 +31,26 @@ public class ServiceMethod {
      * http 方法  GET,POST,DELETE,PUT等等
      */
     private String httpMethod;
+    private final HttpUrl baseUrl;
+    private final Call.Factory callFactory;
     /**
      * 方法注解的值 eg:@GET("v3/xx")  就是其中的v3/xx
      */
     private String relativeUrl;
     //存储参数的注解值
     private ParameterHandler[] parameterHandlers;
-    private final HttpUrl baseUrl;
+    /**
+     * 拼接baseUrl和relativeUrl的结果
+     */
+    private HttpUrl.Builder urlBuilder;
+    /**
+     * form表单请求体
+     */
+    private FormBody.Builder formBuilder;
 
     public ServiceMethod(Builder builder) {
         this.baseUrl = builder.retrofit.getBaseUrl();
+        this.callFactory = builder.retrofit.getCallFactory();
         this.method = builder.method;
         this.methodAnnotations = builder.methodAnnotations;
         this.parameterAnnotations = builder.parameterAnnotations;
@@ -53,12 +64,49 @@ public class ServiceMethod {
      */
     public Call toCall(Object[] args) {
         //1. 创建okhttp的Request
-        Request.Builder builder = new Request.Builder();
+        Request.Builder requestBuilder = new Request.Builder();
         //1.1 地址 -> 其实就是隔壁Retrofit类中的baseUrl+这里的relativeUrl
-//        builder.url()
-        Request request = builder.build();
+        if (urlBuilder == null) {
+            urlBuilder = baseUrl.newBuilder(relativeUrl);
+        }
+        //1.2  将GET或者POST的数据封装进请求
+        // 如果是GET请求 将参数拼接上
+        for (int i = 0; i < parameterHandlers.length; i++) {
+            parameterHandlers[i].apply(this, String.valueOf(args[i]));
+        }
+        FormBody formBody = null;
+        if (formBuilder != null) {
+            formBody = formBuilder.build();
+        }
+        //1.3 将数据放进Request中
+        requestBuilder.url(urlBuilder.build());
+        requestBuilder.method(httpMethod, formBody);
+        Request request = requestBuilder.build();
         //2. 创建Call
-        return null;
+        return callFactory.newCall(request);
+    }
+
+    /**
+     * GET 时  添加请求参数
+     *
+     * @param paramName 参数的name
+     * @param value     参数的值
+     */
+    public void addQueryParameter(String paramName, String value) {
+        urlBuilder.addQueryParameter(paramName, value);
+    }
+
+    /**
+     * POST 时  添加请求参数 在body里面
+     *
+     * @param paramName 参数的name
+     * @param value     参数的值
+     */
+    public void addFormFiled(String paramName, String value) {
+        if (formBuilder == null) {
+            formBuilder = new FormBody.Builder();
+        }
+        formBuilder.add(paramName, value);
     }
 
     public static final class Builder {
@@ -90,6 +138,12 @@ public class ServiceMethod {
                     parseMethodAnnotation(methodAnnotation);
                 }
             }
+
+            //简单判断一下方法使用有Http 的method
+            if (httpMethod == null) {
+                throw new IllegalArgumentException("httpMethod must not be null");
+            }
+
             //2. 处理参数的注解
             parameterHandlers = new ParameterHandler[parameterAnnotations.length];
             for (int i = 0; i < parameterAnnotations.length; i++) {
